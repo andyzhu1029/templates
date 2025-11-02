@@ -1,186 +1,60 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:qr_scanner/providers/qr_history_provider.dart';
+import 'package:qr_scanner/providers/qr_scanner_provider.dart';
+import 'package:qr_scanner/screens/about_screen.dart';
+import 'package:qr_scanner/screens/home_screen.dart';
+import 'package:qr_scanner/screens/qr_history_screen.dart';
+import 'package:qr_scanner/screens/qr_scan_screen.dart';
+import 'package:qr_scanner/utilities/side_menu.dart';
 
 final selectedIndex = ValueNotifier<int>(0);
-final counter = ValueNotifier<int>(0);
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     final destinations = <HomeDestination>[
       HomeDestination(
-        item: const SideMenuItem('Dashboard', Icons.home_outlined),
-        screen: ValueListenableBuilder<int>(
-          valueListenable: counter,
-          builder: (_, v, __) => Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('You have pushed the button this many times:'),
-                Text('$v', style: Theme.of(context).textTheme.headlineMedium),
-              ],
-            ),
-          ),
-        ),
+        item: const SideMenuItem('History', Icons.home_outlined),
+        screen: const QrHistoryScreen(),
       ),
       HomeDestination(
-        item: const SideMenuItem(
-          'Library',
-          Icons.collections_bookmark_outlined,
-        ),
-        screen: const Center(child: Text('Library')),
-      ),
-      HomeDestination(
-        item: const SideMenuItem('Settings', Icons.settings_outlined),
-        screen: const Center(child: Text('Settings')),
+        item: const SideMenuItem('About', Icons.collections_bookmark_outlined),
+        screen: const AboutScreen(),
       ),
     ];
 
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: HomePage(
-        title: 'Flutter Demo Home Page',
-        destinations: destinations,
-        selectedIndex: selectedIndex,
-        onPrimaryAction: () => counter.value++,
-        fabIcon: Icons.add,
-      ),
-    );
-  }
-}
-
-class SideMenuItem {
-  final String label;
-  final IconData icon;
-  const SideMenuItem(this.label, this.icon);
-}
-
-class HomeDestination {
-  final SideMenuItem item;
-  final Widget screen;
-  const HomeDestination({required this.item, required this.screen});
-}
-
-class HomePage extends StatelessWidget {
-  const HomePage({
-    super.key,
-    required this.title,
-    required this.destinations,
-    required this.selectedIndex,
-    this.onPrimaryAction,
-    this.fabIcon = Icons.add,
-  });
-
-  final String title;
-  final List<HomeDestination> destinations;
-  final ValueNotifier<int> selectedIndex;
-  final VoidCallback? onPrimaryAction;
-  final IconData fabIcon;
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: selectedIndex,
-      builder: (context, index, _) {
-        final current = (index >= 0 && index < destinations.length)
-            ? destinations[index]
-            : null;
-        return Scaffold(
-          appBar: AppBar(title: Text(current?.item.label ?? title)),
-          drawer: SideMenu(
-            items: destinations.map((d) => d.item).toList(),
-            selectedIndex: index,
-            onSelected: (i) => selectedIndex.value = i,
-          ),
-          body: IndexedStack(
-            index: index,
-            children: destinations.map((d) => d.screen).toList(),
-          ),
-          floatingActionButton: onPrimaryAction != null && index == 0
-              ? FancyMiniButton(icon: fabIcon, onPressed: onPrimaryAction!)
-              : null,
-        );
-      },
-    );
-  }
-}
-
-class SideMenu extends StatelessWidget {
-  const SideMenu({
-    super.key,
-    required this.items,
-    required this.selectedIndex,
-    required this.onSelected,
-  });
-
-  final List<SideMenuItem> items;
-  final int selectedIndex;
-  final ValueChanged<int> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      child: SafeArea(
-        child: ListView.builder(
-          itemCount: items.length,
-          itemBuilder: (context, i) {
-            final item = items[i];
-            final selected = i == selectedIndex;
-            return ListTile(
-              leading: Icon(item.icon),
-              title: Text(item.label),
-              selected: selected,
-              onTap: () {
-                Navigator.of(context).pop();
-                onSelected(i);
-              },
-            );
-          },
+    return MultiProvider(
+      providers: [ChangeNotifierProvider(create: (_) => QrHistoryProvider())],
+      child: MaterialApp(
+        title: 'QR Scanner',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          useMaterial3: true,
         ),
-      ),
-    );
-  }
-}
-
-class FancyMiniButton extends StatelessWidget {
-  const FancyMiniButton({
-    super.key,
-    required this.onPressed,
-    this.icon = Icons.add,
-  });
-
-  final VoidCallback onPressed;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      width: 48,
-      child: Material(
-        shape: const CircleBorder(),
-        elevation: 8,
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onPressed,
-          child: Ink(
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF60A5FA), Color(0xFF7C3AED)],
-              ),
-            ),
-            child: Icon(icon, size: 20, color: Colors.white),
+        home: Builder(
+          builder: (innerContext) => HomePage(
+            title: 'Home',
+            destinations: destinations,
+            selectedIndex: selectedIndex,
+            onPrimaryAction: () async {
+              await Navigator.of(innerContext).push(
+                MaterialPageRoute(
+                  builder: (_) => ChangeNotifierProvider(
+                    create: (_) => QrScannerProvider(),
+                    child: const QrScanScreen(),
+                  ),
+                ),
+              );
+              if (selectedIndex.value == 0) {
+                await innerContext.read<QrHistoryProvider>().refresh();
+              }
+            },
           ),
         ),
       ),
